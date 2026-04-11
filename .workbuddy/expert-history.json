@@ -1,0 +1,37 @@
+{
+  "version": 2,
+  "sessions": {
+    "792ccee0fc0c43d198c36da8ec590107": [
+      {
+        "expertId": "SoftwareArchitect",
+        "name": "Yara",
+        "profession": "软件架构师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/SoftwareArchitect/SoftwareArchitect.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/SoftwareArchitect/SoftwareArchitect_zh.md",
+        "usedAt": 1775647431948,
+        "industryId": "02-Engineering"
+      }
+    ],
+    "7f2727eb2866412f98af9e757df78e2f": [
+      {
+        "expertId": "FrontendDeveloper",
+        "name": "Paul",
+        "profession": "前端开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/FrontendDeveloper/FrontendDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/FrontendDeveloper/FrontendDeveloper_zh.md",
+        "usedAt": 1775733845289,
+        "industryId": "02-Engineering"
+      },
+      {
+        "expertId": "SeniorDeveloper",
+        "name": "Will",
+        "profession": "高级开发工程师",
+        "avatarUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/avatars/02-Engineering/SeniorDeveloper/SeniorDeveloper.png",
+        "promptUrl": "https://acc-1258344699.cos.accelerate.myqcloud.com/workbuddy/experts/experts/02-Engineering/SeniorDeveloper/SeniorDeveloper_zh.md",
+        "usedAt": 1775733513456,
+        "industryId": "02-Engineering"
+      }
+    ]
+  },
+  "lastUpdated": 1775734391189
+}

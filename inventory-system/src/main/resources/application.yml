@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: inventory-system
+  
+  datasource:
+    url: jdbc:mysql://localhost:3306/inventory_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: Ning.0412
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+  
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+app:
+  frontend-url: http://localhost:5173
+
+logging:
+  level:
+    com.company.inventory: debug
+    org.springframework.security: info
