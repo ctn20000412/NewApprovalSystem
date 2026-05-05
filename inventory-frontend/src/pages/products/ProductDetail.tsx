@@ -156,7 +156,7 @@ export default function ProductDetail() {
             </Link>
             <div>
               <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
+                <h1 className="page-title">{product.name}</h1>
                 <span className={`badge ${product.active ? 'badge-approved' : 'badge-cancelled'}`}>
                   {product.active ? '启用中' : '已停用'}
                 </span>

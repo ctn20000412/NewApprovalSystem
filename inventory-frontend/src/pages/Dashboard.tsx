@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -57,6 +57,7 @@ function formatDate(value?: string) {
 
 export default function Dashboard() {
   const { user, isManager } = useAuth();
+  const managerView = isManager();
   const [stats, setStats] = useState<DashboardStats>({
     pendingRequests: 0,
     approvedRequests: 0,
@@ -119,31 +120,94 @@ export default function Dashboard() {
     }
   };
 
-  const quickActions = [
-    {
-      to: '/requests/new',
-      icon: FilePlus2,
-      title: '新建取货申请',
-      desc: '录入客户项目、产品条目和预估金额，快速进入审批流程。',
-      theme: 'from-primary-600 to-primary-800',
-      tint: 'bg-primary-50',
-    },
-    {
-      to: '/orders',
-      icon: ReceiptText,
-      title: '查看订单进度',
-      desc: '检查已创建订单、完成情况和取消记录，及时跟进交付节点。',
-      theme: 'from-accent-500 to-accent-700',
-      tint: 'bg-accent-50',
-    },
-    {
-      to: '/products',
-      icon: Boxes,
-      title: '检查产品库存',
-      desc: '核对低库存和重点品类，避免申请通过后无法及时出库。',
-      theme: 'from-slate-700 to-slate-900',
-      tint: 'bg-slate-100',
-    },
+  const headline = useMemo(() => {
+    if (managerView) {
+      return stats.pendingRequests > 0
+        ? `今天先处理 ${stats.pendingRequests} 条待审批申请。`
+        : '审批队列已清空，转去盯订单和库存。';
+    }
+
+    return stats.pendingRequests > 0
+      ? `今天还有 ${stats.pendingRequests} 条申请在流转中。`
+      : '今天的申请队列很干净，可以继续推进成交。';
+  }, [managerView, stats.pendingRequests]);
+
+  const summary = useMemo(() => {
+    if (managerView) {
+      return stats.monthOrders > 0
+        ? `本月已成交 ${stats.monthOrders} 单，收入 ${formatCurrency(stats.monthSales)}。`
+        : '本月暂未形成成交，建议先从申请线索和库存节奏开始推进。';
+    }
+
+    return stats.monthOrders > 0
+      ? `你本月已推动 ${stats.monthOrders} 单成交，继续跟进客户与审批节奏。`
+      : '你本月还没有形成订单，可以从新建申请或回访客户开始。';
+  }, [managerView, stats.monthOrders, stats.monthSales]);
+
+  const quickActions = managerView
+    ? [
+        {
+          to: '/requests?status=PENDING',
+          icon: ClipboardCheck,
+          title: '查看待审批申请',
+          desc: '优先处理还在审批队列里的取货申请，减少出库等待。',
+          theme: 'from-primary-600 to-primary-800',
+          tint: 'bg-primary-50',
+        },
+        {
+          to: '/orders',
+          icon: ReceiptText,
+          title: '跟进订单进度',
+          desc: '回看创建、完成与取消状态，把成交和出库节奏盯紧。',
+          theme: 'from-accent-500 to-accent-700',
+          tint: 'bg-accent-50',
+        },
+        {
+          to: '/warehouse',
+          icon: Boxes,
+          title: '检查库存预警',
+          desc: '查看低库存产品和近期流水，避免订单推进到一半才发现缺货。',
+          theme: 'from-slate-700 to-slate-900',
+          tint: 'bg-slate-100',
+        },
+      ]
+    : [
+        {
+          to: '/requests/new',
+          icon: FilePlus2,
+          title: '新建取货申请',
+          desc: '录入客户、项目和产品明细，尽快把客户需求推入审批流程。',
+          theme: 'from-primary-600 to-primary-800',
+          tint: 'bg-primary-50',
+        },
+        {
+          to: '/orders',
+          icon: ReceiptText,
+          title: '查看我的订单',
+          desc: '跟进已建订单状态，及时确认完成、取消和实际成交金额。',
+          theme: 'from-accent-500 to-accent-700',
+          tint: 'bg-accent-50',
+        },
+        {
+          to: '/reports/sales',
+          icon: TrendingUp,
+          title: '查看我的业绩',
+          desc: '按月份回看成交额、客户数和平均客单价，判断推进节奏。',
+          theme: 'from-slate-700 to-slate-900',
+          tint: 'bg-slate-100',
+        },
+      ];
+
+  const playbook = [
+    stats.pendingRequests > 0
+      ? `当前有 ${stats.pendingRequests} 条待处理申请，优先清理审批阻塞。`
+      : '当前没有待处理申请，可以把注意力转向订单完成和客户回访。',
+    stats.monthOrders > 0
+      ? `本月已形成 ${stats.monthOrders} 单成交，重点核对实际金额与交付节奏。`
+      : '本月暂未形成订单，建议尽快从申请池里推进可成交项目。',
+    stats.monthCustomers > 0
+      ? `本月覆盖 ${stats.monthCustomers} 位客户，注意区分重点客户和长尾客户。`
+      : '本月客户覆盖还不多，可以优先推进已有线索的复访节奏。',
   ];
 
   return (
@@ -153,7 +217,7 @@ export default function Dashboard() {
           <div className="alert alert-error">
             <Hourglass className="mt-0.5 h-5 w-5 shrink-0" />
             <div>
-              <div className="font-medium">数据加载失败</div>
+              <div className="font-medium">数据读取失败</div>
               <div className="mt-1 text-sm">{error}</div>
             </div>
           </div>
@@ -161,17 +225,13 @@ export default function Dashboard() {
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]">
           <div className="hero-panel">
-            <div className="grid gap-8 xl:grid-cols-[minmax(0,1.15fr)_320px] xl:items-end">
+            <div className="grid gap-8 xl:grid-cols-[minmax(0,1.12fr)_320px] xl:items-end">
               <div>
                 <div className="section-kicker">今日节奏</div>
-                <h2 className="mt-4 max-w-[13ch] text-[clamp(1.5rem,1.9vw,2.45rem)] font-bold leading-[1.12] tracking-tight text-gray-900">
-                  把申请、订单和库存放在同一个工作流里。
+                <h2 className="page-title mt-3 max-w-[18ch]">
+                  {headline}
                 </h2>
-                <p className="mt-4 max-w-[62ch] text-[13px] leading-6 text-gray-600 md:text-sm">
-                  {isManager()
-                    ? '集中查看待审批申请、本月订单和销售额变化，优先处理阻塞项，再回到仓位和用户侧排查风险。'
-                    : '先确认自己提交的申请进度，再核对本月成交与客户覆盖情况，遇到异常可以继续下钻到订单和库存页面。'}
-                </p>
+                <p className="mt-4 max-w-[62ch] text-sm leading-7 text-gray-600">{summary}</p>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-3">
                   <div className="metric-chip">
@@ -182,7 +242,7 @@ export default function Dashboard() {
                     <div className="metric-chip-value text-[1.05rem]">
                       {new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })}
                     </div>
-                    <div className="metric-chip-note">建议优先处理今天需要审批和跟进的事项。</div>
+                    <div className="metric-chip-note">建议优先处理卡在审批和出库之间的关键节点。</div>
                   </div>
 
                   <div className="metric-chip">
@@ -190,8 +250,8 @@ export default function Dashboard() {
                       <ClipboardCheck className="h-4 w-4 text-primary-600" />
                       当前角色
                     </div>
-                    <div className="metric-chip-value text-[1.05rem]">{user?.roleDescription || '未登录'}</div>
-                    <div className="metric-chip-note">不同角色看到的数据范围和操作权限不同。</div>
+                    <div className="metric-chip-value text-[1.05rem]">{user?.roleDescription || '未识别'}</div>
+                    <div className="metric-chip-note">不同角色看到的统计口径和操作入口会自动适配。</div>
                   </div>
 
                   <div className="metric-chip">
@@ -202,7 +262,7 @@ export default function Dashboard() {
                     <div className="metric-chip-value text-[1.05rem]">
                       {loading ? '--' : `${stats.monthOrders} 单`}
                     </div>
-                    <div className="metric-chip-note">成交节奏会直接影响库存占用和出库安排。</div>
+                    <div className="metric-chip-note">申请、审批、建单和出库最好保持同一条推进节奏。</div>
                   </div>
                 </div>
               </div>
@@ -214,16 +274,16 @@ export default function Dashboard() {
                     <CircleDollarSign className="h-4 w-4 text-primary-600" />
                   </div>
                   <div className="metric-chip-value">{loading ? '--' : formatCurrency(stats.monthSales)}</div>
-                  <div className="metric-chip-note">按当前可见订单统计，自动匹配你的权限范围。</div>
+                  <div className="metric-chip-note">按当前可见订单统计，可用来判断当月推进质量。</div>
                 </div>
 
                 <div className="metric-chip">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">待处理申请</span>
+                    <span className="text-sm text-gray-500">待审批申请</span>
                     <Hourglass className="h-4 w-4 text-accent-600" />
                   </div>
                   <div className="metric-chip-value">{loading ? '--' : stats.pendingRequests}</div>
-                  <div className="metric-chip-note">申请积压越多，审批和库存调度越容易断层。</div>
+                  <div className="metric-chip-note">审批队列越长，申请转订单和出库就越容易堵塞。</div>
                 </div>
 
                 <div className="metric-chip">
@@ -232,7 +292,7 @@ export default function Dashboard() {
                     <Users className="h-4 w-4 text-slate-700" />
                   </div>
                   <div className="metric-chip-value">{loading ? '--' : stats.monthCustomers}</div>
-                  <div className="metric-chip-note">按本月订单去重，便于观察客户覆盖面。</div>
+                  <div className="metric-chip-note">客户覆盖越广，越需要把项目和订单节奏看清楚。</div>
                 </div>
               </div>
             </div>
@@ -242,24 +302,23 @@ export default function Dashboard() {
             <div className="section-kicker">操作提示</div>
             <h3 className="mt-3 text-xl font-semibold tracking-tight text-gray-900">今天先做哪几件事</h3>
             <div className="mt-5 space-y-4">
-              <div className="rounded-[24px] border border-primary-100 bg-primary-50/70 p-4">
-                <div className="text-sm font-medium text-gray-900">先看审批积压</div>
-                <div className="mt-1 text-[13px] leading-5 text-gray-600">
-                  当前还有 <span className="font-semibold text-primary-700">{loading ? '--' : stats.pendingRequests}</span>{' '}
-                  条待审批申请，越早处理越能减少订单和出库串联的延迟。
+              {playbook.map((item, index) => (
+                <div
+                  key={item}
+                  className={`rounded-[24px] border p-4 ${
+                    index === 0
+                      ? 'border-primary-100 bg-primary-50/70'
+                      : index === 1
+                        ? 'border-accent-100 bg-accent-50/70'
+                        : 'border-slate-200 bg-slate-50/80'
+                  }`}
+                >
+                  <div className="text-sm font-medium text-gray-900">
+                    {index === 0 ? '先看队列' : index === 1 ? '盯住成交' : '回看客户'}
+                  </div>
+                  <div className="mt-1 text-[13px] leading-5 text-gray-600">{item}</div>
                 </div>
-              </div>
-
-              <div className="rounded-[24px] border border-accent-100 bg-accent-50/70 p-4">
-                <div className="text-sm font-medium text-gray-900">留意成交质量</div>
-                <div className="mt-1 text-[13px] leading-5 text-gray-600">
-                  本月平均单价约为{' '}
-                  <span className="font-semibold text-accent-700">
-                    {loading ? '--' : formatCurrency(stats.avgOrderAmount)}
-                  </span>
-                  ，低于预期时需要回看项目利润和报价节奏。
-                </div>
-              </div>
+              ))}
 
               <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
                 <div className="text-sm font-medium text-gray-900">当前登录账号</div>
@@ -279,12 +338,12 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.1fr_1.1fr_0.9fr_0.9fr]">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr]">
           <div className="card stat-card p-6 text-primary-700">
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-sm text-gray-500">待审批申请</div>
-                <div className="mt-3 text-4xl font-semibold tracking-tight text-gray-900">
+                <div className="stat-value">
                   {loading ? '--' : stats.pendingRequests}
                 </div>
                 <div className="mt-3 inline-flex items-center gap-1 text-xs text-accent-700">
@@ -302,12 +361,12 @@ export default function Dashboard() {
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-sm text-gray-500">本月订单数</div>
-                <div className="mt-3 text-4xl font-semibold tracking-tight text-gray-900">
+                <div className="stat-value">
                   {loading ? '--' : stats.monthOrders}
                 </div>
                 <div className="mt-3 inline-flex items-center gap-1 text-xs text-primary-700">
                   <TrendingUp className="h-3.5 w-3.5" />
-                  维持稳定成交比冲量更重要
+                  保持申请推进和建单节奏更关键
                 </div>
               </div>
               <div className="stat-icon success">
@@ -319,8 +378,8 @@ export default function Dashboard() {
           <div className="card stat-card p-6 text-primary-700">
             <div className="flex items-start justify-between">
               <div>
-                <div className="text-sm text-gray-500">已审批申请</div>
-                <div className="mt-3 text-4xl font-semibold tracking-tight text-gray-900">
+                <div className="text-sm text-gray-500">已批准申请</div>
+                <div className="stat-value">
                   {loading ? '--' : stats.approvedRequests}
                 </div>
                 <div className="mt-3 inline-flex items-center gap-1 text-xs text-gray-500">
@@ -341,7 +400,7 @@ export default function Dashboard() {
                   {loading ? '--' : formatCurrency(stats.avgOrderAmount)}
                 </div>
                 <div className="mt-3 inline-flex items-center gap-1 text-xs text-gray-500">
-                  用于判断报价质量和项目结构
+                  用来判断项目质量和报价结构
                 </div>
               </div>
               <div className="stat-icon warning">
@@ -386,8 +445,10 @@ export default function Dashboard() {
                 <div className="empty-state-icon">
                   <Package className="h-8 w-8 text-primary-700" />
                 </div>
-                <div className="empty-state-title">最近还没有新的取货申请</div>
-                <div className="empty-state-desc">新增申请后，这里会展示最近的客户项目、金额和状态。</div>
+                <div className="empty-state-title">暂时没有新的取货申请</div>
+                <div className="empty-state-desc">
+                  可以从新建申请开始，把客户项目、产品明细和预算金额推进到审批流程。
+                </div>
                 <Link to="/requests/new" className="btn btn-primary">
                   <FilePlus2 className="h-4 w-4" />
                   新建取货申请
@@ -399,7 +460,7 @@ export default function Dashboard() {
                   <thead>
                     <tr>
                       <th>申请编号</th>
-                      <th>客户与项目</th>
+                      <th>客户 / 项目</th>
                       <th>申请金额</th>
                       <th>状态</th>
                     </tr>
@@ -440,7 +501,7 @@ export default function Dashboard() {
                   <Link
                     key={action.to}
                     to={action.to}
-                    className={`group block rounded-[28px] border border-gray-100 ${action.tint} p-5 transition-all duration-200 hover:-translate-y-[1px] hover:shadow-lg`}
+                    className={`group block rounded-[26px] border border-gray-100 ${action.tint} p-5 transition-all duration-200 hover:-translate-y-[1px] hover:shadow-lg`}
                   >
                     <div className="flex items-start justify-between gap-4">
                       <div
@@ -458,14 +519,14 @@ export default function Dashboard() {
             </div>
 
             <div className="card p-6">
-              <div className="section-kicker">今日提醒</div>
-              <h3 className="mt-2 text-xl font-semibold tracking-tight text-gray-900">关注这两个风险点</h3>
+              <div className="section-kicker">本月视角</div>
+              <h3 className="mt-2 text-xl font-semibold tracking-tight text-gray-900">把申请、订单和客户放在一起看</h3>
               <div className="mt-5 space-y-4 text-sm leading-6 text-gray-600">
                 <div className="rounded-[24px] border border-gray-100 bg-gray-50/80 p-4">
-                  如果待审批申请连续增加，说明审批和库存评估没有同步，需要优先回看申请链路。
+                  如果申请很多但订单不多，说明审批或报价转换环节存在阻塞，需要优先清理队列。
                 </div>
                 <div className="rounded-[24px] border border-gray-100 bg-gray-50/80 p-4">
-                  如果订单数正常但成交额偏低，要回看产品结构、报价折扣和客户类型是否失衡。
+                  如果订单金额高但客户数少，说明项目集中度较高，建议同时关注库存与交付风险。
                 </div>
               </div>
             </div>

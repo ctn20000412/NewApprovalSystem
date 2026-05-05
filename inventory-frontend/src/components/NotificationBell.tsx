@@ -20,45 +20,45 @@ const notificationTypeMeta: Record<
 > = {
   REQUEST_CREATED: {
     icon: ClipboardList,
-    color: 'text-amber-600',
-    badge: 'bg-amber-50 text-amber-700',
-    label: '新申请',
+    color: 'text-accent-600',
+    badge: 'bg-accent-50 text-accent-700',
+    label: '申请提交',
   },
   REQUEST_APPROVED: {
     icon: PackageCheck,
     color: 'text-emerald-600',
     badge: 'bg-emerald-50 text-emerald-700',
-    label: '已通过',
+    label: '申请通过',
   },
   REQUEST_REJECTED: {
     icon: XCircle,
     color: 'text-red-600',
     badge: 'bg-red-50 text-red-700',
-    label: '已驳回',
+    label: '申请驳回',
   },
   REQUEST_ADJUSTED: {
     icon: ClipboardList,
     color: 'text-sky-600',
     badge: 'bg-sky-50 text-sky-700',
-    label: '已调整',
+    label: '申请调整',
   },
   ORDER_CREATED: {
     icon: Receipt,
-    color: 'text-violet-600',
-    badge: 'bg-violet-50 text-violet-700',
-    label: '新订单',
+    color: 'text-primary-700',
+    badge: 'bg-primary-50 text-primary-700',
+    label: '订单创建',
   },
   ORDER_COMPLETED: {
     icon: PackageCheck,
     color: 'text-emerald-600',
     badge: 'bg-emerald-50 text-emerald-700',
-    label: '已完成',
+    label: '订单完成',
   },
   ORDER_CANCELLED: {
     icon: XCircle,
     color: 'text-red-600',
     badge: 'bg-red-50 text-red-700',
-    label: '已取消',
+    label: '订单取消',
   },
   SYSTEM: {
     icon: Bell,
@@ -249,6 +249,8 @@ export default function NotificationBell() {
       <div
         ref={panelRef}
         style={panelStyle}
+        role="dialog"
+        aria-label="通知中心"
         className="pointer-events-auto overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-2xl shadow-slate-200/80"
       >
         <div className="border-b border-gray-100 px-5 py-4">
@@ -283,8 +285,8 @@ export default function NotificationBell() {
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-gray-400">
                 <Bell className="h-6 w-6" />
               </div>
-              <div className="mt-4 text-sm font-medium text-gray-900">暂无通知</div>
-              <div className="mt-1 text-xs text-gray-500">新的申请、审批和订单状态变更会显示在这里。</div>
+              <div className="mt-4 text-sm font-medium text-gray-900">暂时没有通知</div>
+              <div className="mt-1 text-xs text-gray-500">新的申请、审批和订单动态会出现在这里。</div>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -342,6 +344,9 @@ export default function NotificationBell() {
           ref={buttonRef}
           type="button"
           onClick={() => void handleToggle()}
+          aria-label="打开通知中心"
+          aria-haspopup="dialog"
+          aria-expanded={open}
           className="relative rounded-2xl border border-gray-200 bg-white p-2.5 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600"
         >
           <Bell className="h-5 w-5" />

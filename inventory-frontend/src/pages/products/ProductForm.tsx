@@ -157,7 +157,7 @@ export default function ProductForm() {
                 <div className="inline-flex rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
                   产品资料维护
                 </div>
-                <h1 className="mt-3 text-3xl font-bold text-gray-900">
+                <h1 className="page-title mt-3">
                   {isEdit ? '编辑产品' : '新增产品'}
                 </h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">

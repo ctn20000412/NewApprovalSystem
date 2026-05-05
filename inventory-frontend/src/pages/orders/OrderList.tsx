@@ -1,42 +1,64 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { orderApi } from '../../services/api.ts';
+import {
+  Calendar,
+  CheckCircle,
+  Eye,
+  Filter,
+  Plus,
+  Receipt,
+  RefreshCw,
+  Search,
+  TrendingUp,
+  XCircle,
+} from 'lucide-react';
 import Layout from '../../components/Layout.tsx';
-import type { Order } from '../../types';
-import { Plus, Eye, CheckCircle, XCircle, Search, Filter, Receipt, TrendingUp, Calendar } from 'lucide-react';
+import { orderApi } from '../../services/api.ts';
+import type { Order, OrderStatus } from '../../types';
 
-const statusConfig: Record<string, { text: string; bg: string; textColor: string; icon: React.ReactNode }> = {
-  PENDING: { 
-    text: '待确认', 
-    bg: 'bg-amber-100', 
-    textColor: 'text-amber-700',
-    icon: <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+const statusConfig: Record<OrderStatus, { text: string; className: string; icon: React.ReactNode }> = {
+  PENDING: {
+    text: '待处理',
+    className: 'badge-pending',
+    icon: <span className="h-2 w-2 rounded-full bg-amber-500" />,
   },
-  CONFIRMED: { 
-    text: '已确认', 
-    bg: 'bg-blue-100', 
-    textColor: 'text-blue-700',
-    icon: <CheckCircle className="w-4 h-4" />
+  CONFIRMED: {
+    text: '已确认',
+    className: 'badge border border-primary-200 bg-primary-50 text-primary-700',
+    icon: <CheckCircle className="h-3.5 w-3.5" />,
   },
-  COMPLETED: { 
-    text: '已完成', 
-    bg: 'bg-emerald-100', 
-    textColor: 'text-emerald-700',
-    icon: <CheckCircle className="w-4 h-4" />
+  COMPLETED: {
+    text: '已完成',
+    className: 'badge-completed',
+    icon: <CheckCircle className="h-3.5 w-3.5" />,
   },
-  CANCELLED: { 
-    text: '已取消', 
-    bg: 'bg-gray-100', 
-    textColor: 'text-gray-600',
-    icon: <XCircle className="w-4 h-4" />
+  CANCELLED: {
+    text: '已取消',
+    className: 'badge-cancelled',
+    icon: <XCircle className="h-3.5 w-3.5" />,
   },
 };
+
+function formatCurrency(value?: number) {
+  return `¥${Number(value || 0).toLocaleString('zh-CN', {
+    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+  })}`;
+}
+
+function formatDate(value?: string) {
+  if (!value) return '-';
+  return new Date(value).toLocaleDateString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+  });
+}
 
 export default function OrderList() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   const fetchOrders = async () => {
@@ -45,174 +67,195 @@ export default function OrderList() {
       setError('');
       const params = filterStatus ? { status: filterStatus } : undefined;
       const data = await orderApi.getAll(params);
-      setOrders(data);
+      setOrders(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError('加载订单失败');
+      console.error('Failed to load orders:', err);
+      setError('订单列表加载失败，请稍后重试。');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchOrders();
+    void fetchOrders();
   }, [filterStatus]);
 
-  const filteredOrders = orders.filter(order =>
-    order.orderNo?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.customerName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.projectName?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredOrders = useMemo(() => {
+    const keyword = searchQuery.trim().toLowerCase();
+    if (!keyword) return orders;
+
+    return orders.filter((order) =>
+      [order.orderNo, order.customerName, order.projectName, order.salesName]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(keyword)),
+    );
+  }, [orders, searchQuery]);
+
+  const stats = useMemo(
+    () => ({
+      total: orders.length,
+      processing: orders.filter((order) => order.status === 'CONFIRMED').length,
+      completed: orders.filter((order) => order.status === 'COMPLETED').length,
+      totalAmount: orders
+        .filter((order) => order.status === 'COMPLETED')
+        .reduce((sum, order) => sum + Number(order.actualAmount || 0), 0),
+    }),
+    [orders],
   );
 
   const handleComplete = async (id: number) => {
-    if (!confirm('确认完成此订单吗？')) return;
+    if (!window.confirm('确定要完成这张订单吗？完成后会进入已完成状态。')) return;
     try {
       await orderApi.complete(id);
-      fetchOrders();
+      await fetchOrders();
     } catch (err) {
-      alert('操作失败');
+      console.error('Failed to complete order:', err);
+      window.alert('完成订单失败，请稍后重试。');
     }
   };
 
   const handleCancel = async (id: number) => {
-    if (!confirm('确认取消此订单吗？')) return;
+    if (!window.confirm('确定要取消这张订单吗？取消后库存会按后端规则回滚。')) return;
     try {
       await orderApi.cancel(id);
-      fetchOrders();
+      await fetchOrders();
     } catch (err) {
-      alert('操作失败');
+      console.error('Failed to cancel order:', err);
+      window.alert('取消订单失败，请稍后重试。');
     }
-  };
-
-  // 统计
-  const stats = {
-    total: orders.length,
-    processing: orders.filter(o => o.status === 'CONFIRMED').length,
-    completed: orders.filter(o => o.status === 'COMPLETED').length,
-    totalAmount: orders.filter(o => o.status === 'COMPLETED').reduce((sum, o) => sum + (o.actualAmount || 0), 0),
   };
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* 页面标题 */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="page-title">订单管理</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              共 <span className="font-semibold text-primary-600">{filteredOrders.length}</span> 个订单
-            </p>
+      <div className="space-y-5">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="card stat-card text-primary-700">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-sm text-gray-500">订单总数</div>
+                <div className="stat-value">{loading ? '--' : stats.total}</div>
+                <div className="stat-label">当前筛选范围内的全部订单</div>
+              </div>
+              <div className="stat-icon primary">
+                <Receipt className="h-5 w-5" />
+              </div>
+            </div>
           </div>
-          <Link to="/orders/new" className="btn btn-primary">
-            <Plus className="h-4 w-4" />
-            新建订单
-          </Link>
-        </div>
 
-        {/* 统计卡片 */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="stat-card card card-hover p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white">
-                <Receipt className="w-5 h-5" />
-              </div>
+          <div className="card stat-card text-primary-700">
+            <div className="flex items-start justify-between">
               <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                <p className="text-xs text-gray-500">全部订单</p>
+                <div className="text-sm text-gray-500">待完成订单</div>
+                <div className="stat-value">{loading ? '--' : stats.processing}</div>
+                <div className="stat-label">已确认但尚未完成</div>
+              </div>
+              <div className="stat-icon warning">
+                <TrendingUp className="h-5 w-5" />
               </div>
             </div>
           </div>
-          <div className="stat-card card card-hover p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center text-white">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.processing}</p>
-                <p className="text-xs text-gray-500">待完成</p>
-              </div>
-            </div>
-          </div>
-          <div className="stat-card card card-hover p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white">
-                <CheckCircle className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.completed}</p>
-                <p className="text-xs text-gray-500">已完成</p>
-              </div>
-            </div>
-          </div>
-          <div className="stat-card card card-hover p-5">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white">
-                <Receipt className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-lg font-bold text-primary-600">¥{stats.totalAmount.toLocaleString()}</p>
-                <p className="text-xs text-gray-500">成交总额</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* 筛选栏 */}
-        <div className="card p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <div className="card stat-card text-primary-700">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-sm text-gray-500">已完成订单</div>
+                <div className="stat-value">{loading ? '--' : stats.completed}</div>
+                <div className="stat-label">已进入成交完成状态</div>
+              </div>
+              <div className="stat-icon success">
+                <CheckCircle className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+
+          <div className="card stat-card text-primary-700">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="text-sm text-gray-500">完成订单金额</div>
+                <div className="stat-value text-primary-700">{loading ? '--' : formatCurrency(stats.totalAmount)}</div>
+                <div className="stat-label">按实际成交金额统计</div>
+              </div>
+              <div className="stat-icon primary">
+                <Receipt className="h-5 w-5" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="card p-4">
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto] lg:items-center">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="搜索订单号、客户或项目..."
+                placeholder="搜索订单号、客户、项目或销售"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="form-input pl-11"
               />
             </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  className="pl-10 pr-8 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 appearance-none cursor-pointer"
-                >
-                  <option value="">全部状态</option>
-                  <option value="PENDING">待确认</option>
-                  <option value="CONFIRMED">已确认</option>
-                  <option value="COMPLETED">已完成</option>
-                  <option value="CANCELLED">已取消</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* 错误提示 */}
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <select
+                value={filterStatus}
+                onChange={(event) => setFilterStatus(event.target.value)}
+                className="form-select pl-10"
+              >
+                <option value="">全部状态</option>
+                <option value="PENDING">待处理</option>
+                <option value="CONFIRMED">已确认</option>
+                <option value="COMPLETED">已完成</option>
+                <option value="CANCELLED">已取消</option>
+              </select>
+            </div>
+
+            <button type="button" onClick={() => void fetchOrders()} className="btn btn-secondary">
+              <RefreshCw className="h-4 w-4" />
+              刷新
+            </button>
+
+            <Link to="/orders/new" className="btn btn-primary">
+              <Plus className="h-4 w-4" />
+              新建订单
+            </Link>
+          </div>
+        </section>
+
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-3">
-            <XCircle className="w-5 h-5" />
-            {error}
+          <div className="alert alert-error" role="alert">
+            <XCircle className="mt-0.5 h-5 w-5 shrink-0" />
+            <div>{error}</div>
           </div>
         )}
 
-        {/* 订单列表 */}
-        <div className="card overflow-hidden">
+        <section className="card overflow-hidden">
+          <div className="card-header">
+            <div>
+              <div className="section-kicker">订单台账</div>
+              <h2 className="mt-1 text-base font-semibold text-gray-900">订单列表</h2>
+            </div>
+            <div className="text-sm text-gray-500">
+              当前显示 <span className="font-semibold text-primary-700">{filteredOrders.length}</span> 条
+            </div>
+          </div>
+
           {loading ? (
-            <div className="p-12 flex flex-col items-center justify-center">
-              <div className="loading-spinner mb-4" />
-              <p className="text-gray-500">加载中...</p>
+            <div className="space-y-3 p-5">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="skeleton h-14" />
+              ))}
             </div>
           ) : filteredOrders.length === 0 ? (
             <div className="empty-state">
               <div className="empty-icon">
-                <Receipt className="w-8 h-8" />
+                <Receipt className="h-7 w-7 text-primary-700" />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-1">暂无订单</h3>
-              <p className="text-sm text-gray-500 mb-4">还没有订单记录</p>
+              <div className="empty-state-title">暂无订单</div>
+              <div className="empty-state-desc">当前条件下没有订单记录，可以从已批准申请创建订单。</div>
               <Link to="/orders/new" className="btn btn-primary">
-                <Plus className="w-4 h-4" />
-                创建订单
+                <Plus className="h-4 w-4" />
+                新建订单
               </Link>
             </div>
           ) : (
@@ -220,11 +263,11 @@ export default function OrderList() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>订单信息</th>
-                    <th>客户/项目</th>
+                    <th>订单</th>
+                    <th>客户 / 项目</th>
                     <th>金额</th>
                     <th>状态</th>
-                    <th>创建时间</th>
+                    <th>创建日期</th>
                     <th>操作</th>
                   </tr>
                 </thead>
@@ -232,11 +275,11 @@ export default function OrderList() {
                   {filteredOrders.map((order) => {
                     const status = statusConfig[order.status] || statusConfig.PENDING;
                     return (
-                      <tr key={order.id} className="group">
+                      <tr key={order.id}>
                         <td>
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-100 to-purple-100 flex items-center justify-center">
-                              <Receipt className="w-5 h-5 text-primary-600" />
+                            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-700">
+                              <Receipt className="h-5 w-5" />
                             </div>
                             <div>
                               <div className="font-semibold text-gray-900">{order.orderNo}</div>
@@ -245,36 +288,34 @@ export default function OrderList() {
                           </div>
                         </td>
                         <td>
-                          <div className="font-medium text-gray-900">{order.customerName}</div>
-                          <div className="text-sm text-gray-500">{order.projectName}</div>
+                          <div className="font-medium text-gray-900">{order.customerName || '-'}</div>
+                          <div className="mt-1 text-sm text-gray-500">{order.projectName || '-'}</div>
                         </td>
                         <td>
-                          <div className="font-semibold text-primary-600">
-                            ¥{order.actualAmount?.toLocaleString()}
-                          </div>
-                          {order.totalAmount !== order.actualAmount && (
-                            <div className="text-xs text-gray-400 line-through">
-                              ¥{order.totalAmount?.toLocaleString()}
+                          <div className="font-semibold text-primary-700">{formatCurrency(order.actualAmount)}</div>
+                          {Number(order.totalAmount || 0) !== Number(order.actualAmount || 0) && (
+                            <div className="mt-1 text-xs text-gray-400 line-through">
+                              {formatCurrency(order.totalAmount)}
                             </div>
                           )}
                         </td>
                         <td>
-                          <span className={`badge ${status.bg} ${status.textColor} flex items-center gap-1.5`}>
+                          <span className={`badge ${status.className}`}>
                             {status.icon}
-                            {status.text}
+                            {order.statusDescription || status.text}
                           </span>
                         </td>
                         <td>
                           <div className="flex items-center gap-1.5 text-sm text-gray-500">
-                            <Calendar className="w-4 h-4" />
-                            {new Date(order.createdAt).toLocaleDateString('zh-CN')}
+                            <Calendar className="h-4 w-4" />
+                            {formatDate(order.createdAt)}
                           </div>
                         </td>
                         <td>
                           <div className="flex items-center gap-1">
                             <Link
                               to={`/orders/${order.id}`}
-                              className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-primary-700 transition-colors hover:bg-primary-50"
                               title="查看"
                             >
                               <Eye className="h-4 w-4" />
@@ -282,16 +323,18 @@ export default function OrderList() {
                             {order.status === 'CONFIRMED' && (
                               <>
                                 <button
-                                  onClick={() => handleComplete(order.id)}
-                                  className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                  title="完成"
+                                  type="button"
+                                  onClick={() => void handleComplete(order.id)}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-emerald-700 transition-colors hover:bg-emerald-50"
+                                  title="完成订单"
                                 >
                                   <CheckCircle className="h-4 w-4" />
                                 </button>
                                 <button
-                                  onClick={() => handleCancel(order.id)}
-                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                  title="取消"
+                                  type="button"
+                                  onClick={() => void handleCancel(order.id)}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-red-600 transition-colors hover:bg-red-50"
+                                  title="取消订单"
                                 >
                                   <XCircle className="h-4 w-4" />
                                 </button>
@@ -306,7 +349,7 @@ export default function OrderList() {
               </table>
             </div>
           )}
-        </div>
+        </section>
       </div>
     </Layout>
   );

@@ -35,14 +35,14 @@ const pageLabels: Record<string, string> = {
 };
 
 const pageDescriptions: Record<string, string> = {
-  '/dashboard': '集中查看审批节奏、订单推进和本月成交变化，保持销售与库存协同。',
-  '/requests': '管理销售取货申请，跟踪审批状态、客户项目和待处理任务。',
-  '/orders': '查看订单流转和成交金额，及时处理完成、取消与异常订单。',
-  '/warehouse': '掌握库存余量、流水变动和低库存预警，确保仓储动作可追踪。',
-  '/products': '维护产品规格、价格和库存安全线，让产品信息保持一致。',
-  '/users': '管理系统账号、角色和启停状态，控制业务权限边界。',
-  '/reports': '按月查看公司经营概览和销售排行，给管理决策提供依据。',
-  '/reports/sales': '追踪个人成交额、客户数和客单价，及时调整销售节奏。',
+  '/dashboard': '查看待审申请、成交进度和本月库存节奏。',
+  '/requests': '按状态管理取货申请，快速发起、修改和跟进审批。',
+  '/orders': '跟进订单创建、完成出库和成交回看。',
+  '/warehouse': '总览库存、低库存预警和近期库存流水。',
+  '/products': '维护产品、价格与库存阈值。',
+  '/users': '管理账号、角色和启停状态。',
+  '/reports': '汇总公司成交、申请质量与销售排行。',
+  '/reports/sales': '按月份查看个人成交、客户数和平均客单价。',
 };
 
 function NavLink({ to, icon, children }: NavLinkProps) {
@@ -80,10 +80,9 @@ export default function Layout({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { user, logout, isManager } = useAuth();
 
-  const currentPageLabel = getMatchedValue(location.pathname, pageLabels) || '业务工作台';
+  const currentPageLabel = getMatchedValue(location.pathname, pageLabels) || '工作台';
   const currentPageDescription =
-    getMatchedValue(location.pathname, pageDescriptions) ||
-    '围绕申请、订单、库存和报表，形成同一套协同视图。';
+    getMatchedValue(location.pathname, pageDescriptions) || '在同一条流程里处理申请、订单和库存。';
 
   const today = new Date().toLocaleDateString('zh-CN', {
     year: 'numeric',
@@ -108,7 +107,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <div>
               <div className="text-lg font-semibold tracking-tight text-white">智仓协同系统</div>
               <div className="mt-1 text-xs leading-5 text-white/60">
-                让申请审批、订单流转、库存变化和业绩统计落在同一套业务节奏里。
+                让申请、审批、订单和库存留在同一条运营链路里。
               </div>
             </div>
           </div>
@@ -166,10 +165,10 @@ export default function Layout({ children }: { children: ReactNode }) {
             <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-white/70">
               <div className="flex items-center gap-2 text-sm">
                 <ShieldCheck className="h-4 w-4 text-primary-300" />
-                当前账号已启用会话保护
+                当前账号已进入受保护工作区
               </div>
               <div className="mt-2 text-xs leading-5 text-white/50">
-                完成审批、调价或用户管理后建议及时退出，避免共享设备留下登录状态。
+                所有审批、订单和库存操作都会基于当前角色权限进行展示与提交。
               </div>
             </div>
 
@@ -186,7 +185,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       <main className="main-content">
         <div className="main-shell">
-          <div className="mb-6 rounded-[30px] border border-white/70 bg-white/[0.76] px-5 py-5 shadow-sm backdrop-blur md:px-6">
+          <div className="mb-6 rounded-[28px] border border-white/80 bg-white/[0.8] px-5 py-5 shadow-sm backdrop-blur md:px-6">
             <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_auto] xl:items-center">
               <div>
                 <div className="section-kicker">运营工作台</div>
@@ -195,10 +194,10 @@ export default function Layout({ children }: { children: ReactNode }) {
                   <ChevronRight className="h-4 w-4" />
                   <span className="font-medium text-gray-600">{currentPageLabel}</span>
                 </div>
-                <h1 className="mt-4 text-[clamp(2rem,2.6vw,3.2rem)] font-bold tracking-tight text-gray-900">
+                <h1 className="page-title mt-3">
                   {currentPageLabel}
                 </h1>
-                <p className="mt-2 max-w-[66ch] text-sm leading-6 text-gray-500">
+                <p className="mt-2 max-w-[64ch] text-sm leading-6 text-gray-500">
                   {currentPageDescription}
                 </p>
               </div>

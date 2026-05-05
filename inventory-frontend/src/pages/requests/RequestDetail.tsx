@@ -206,7 +206,7 @@ export default function RequestDetail() {
                 </div>
               </div>
 
-              <h2 className="mt-4 max-w-[14ch] text-[clamp(2rem,2.8vw,3.7rem)] font-bold tracking-tight text-gray-900">
+              <h2 className="page-title mt-3 max-w-[16ch]">
                 {request.requestNo}
               </h2>
               <p className="mt-4 max-w-[64ch] text-sm leading-7 text-gray-600 md:text-base">

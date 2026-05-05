@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DollarSign, PackageCheck, RefreshCw, Target, TrendingUp, Users } from 'lucide-react';
+import {
+  BarChart3,
+  DollarSign,
+  PackageCheck,
+  RefreshCw,
+  Target,
+  TrendingUp,
+  Users,
+} from 'lucide-react';
 import Layout from '../components/Layout.tsx';
 import { useAuth } from '../contexts/AuthContext.tsx';
 import { reportApi } from '../services/api.ts';
@@ -10,10 +18,10 @@ function getCurrentMonthValue() {
 }
 
 function formatCurrency(value: number) {
-  return value.toLocaleString('zh-CN', {
+  return `¥${value.toLocaleString('zh-CN', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  });
+  })}`;
 }
 
 export default function SalesReportPage() {
@@ -60,7 +68,8 @@ export default function SalesReportPage() {
         setSelectedUserId(user.id);
       }
     } catch (err) {
-      setError('销售人员列表加载失败，请稍后重试。');
+      console.error('Failed to load sales users:', err);
+      setError('销售人员加载失败，请检查后端服务。');
       setLoading(false);
     }
   };
@@ -75,7 +84,8 @@ export default function SalesReportPage() {
       });
       setReport(data);
     } catch (err) {
-      setError('业绩报表加载失败，请稍后重试。');
+      console.error('Failed to load sales report:', err);
+      setError('业绩数据加载失败，请检查统计接口。');
     } finally {
       setLoading(false);
     }
@@ -83,7 +93,7 @@ export default function SalesReportPage() {
 
   const selectedSalesName = useMemo(() => {
     if (!managerMode) {
-      return user?.realName || '当前用户';
+      return user?.realName || '当前账号';
     }
     return salesUsers.find((item) => item.id === selectedUserId)?.realName || report?.salesName || '销售人员';
   }, [managerMode, user, salesUsers, selectedUserId, report]);
@@ -95,50 +105,69 @@ export default function SalesReportPage() {
     return Math.round(report.totalAmount / report.customerCount);
   }, [report]);
 
+  const orderCount = report?.orderCount ?? 0;
+  const totalAmount = report?.totalAmount ?? 0;
+  const customerCount = report?.customerCount ?? 0;
+  const avgPrice = report?.avgPrice ?? 0;
+
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="page-title">我的业绩</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              查看月度成交额、订单完成情况、客户覆盖和平均客单价。
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {managerMode && (
-              <select
-                className="form-select w-auto"
-                value={selectedUserId ?? ''}
-                onChange={(event) => setSelectedUserId(Number(event.target.value))}
-              >
-                {salesUsers.length === 0 ? (
-                  <option value="">暂无销售用户</option>
-                ) : (
-                  salesUsers.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.realName}
-                    </option>
-                  ))
+      <div className="space-y-5">
+        <section className="hero-panel">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-end">
+            <div>
+              <div className="section-kicker">我的业绩</div>
+              <h1 className="page-title mt-3">销售业绩、客户数量和客单价复盘</h1>
+              <p className="page-subtitle max-w-3xl">
+                按月份查看个人或指定销售的成交金额、订单数量和客户覆盖情况，帮助判断销售节奏和项目质量。
+              </p>
+            </div>
+
+            <div className="card p-4">
+              <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
+                {managerMode && (
+                  <div>
+                    <label className="form-label">销售人员</label>
+                    <select
+                      className="form-select"
+                      value={selectedUserId ?? ''}
+                      onChange={(event) => setSelectedUserId(Number(event.target.value))}
+                    >
+                      {salesUsers.length === 0 ? (
+                        <option value="">暂无销售人员</option>
+                      ) : (
+                        salesUsers.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.realName}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
                 )}
-              </select>
-            )}
-            <input
-              type="month"
-              className="form-input w-auto"
-              value={month}
-              onChange={(event) => setMonth(event.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => void loadReport(month, managerMode ? selectedUserId : user?.id)}
-              className="btn btn-secondary btn-sm"
-            >
-              <RefreshCw className="h-4 w-4" />
-              刷新
-            </button>
+
+                <div>
+                  <label className="form-label">统计月份</label>
+                  <input
+                    type="month"
+                    className="form-input"
+                    value={month}
+                    onChange={(event) => setMonth(event.target.value)}
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => void loadReport(month, managerMode ? selectedUserId : user?.id)}
+                  className="btn btn-secondary"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  刷新
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
 
         {error && (
           <div className="alert alert-error">
@@ -146,142 +175,151 @@ export default function SalesReportPage() {
           </div>
         )}
 
-        <div className="card">
+        <section className="card overflow-hidden">
           <div className="card-body flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="text-sm text-gray-500">当前查看对象</div>
-              <div className="mt-1 text-2xl font-bold text-gray-900">{selectedSalesName}</div>
-              <div className="mt-2 text-sm text-gray-500">统计月份：{month}</div>
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-700 text-base font-semibold text-white">
+                {selectedSalesName.charAt(0)}
+              </div>
+              <div>
+                <div className="text-sm text-gray-500">当前查看对象</div>
+                <div className="mt-1 text-xl font-semibold text-gray-900">{selectedSalesName}</div>
+                <div className="mt-1 text-xs text-gray-500">统计月份：{month}</div>
+              </div>
             </div>
-            <div className="rounded-2xl bg-gradient-to-br from-blue-50 to-cyan-50 px-5 py-4">
-              <div className="text-sm text-blue-700">月度成交额</div>
-              <div className="mt-2 text-3xl font-bold text-blue-900">
-                ¥{loading ? '-' : formatCurrency(report?.totalAmount ?? 0)}
+
+            <div className="rounded-2xl border border-primary-100 bg-primary-50 px-5 py-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary-700">
+                <BarChart3 className="h-4 w-4" />
+                本月成交金额
+              </div>
+              <div className="mt-2 text-2xl font-semibold text-primary-900">
+                {loading ? '--' : formatCurrency(totalAmount)}
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="stat-card">
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="card stat-card">
             <div className="stat-icon primary">
-              <DollarSign className="h-6 w-6" />
+              <DollarSign className="h-5 w-5" />
             </div>
-            <div className="stat-value">¥{loading ? '-' : formatCurrency(report?.totalAmount ?? 0)}</div>
-            <div className="stat-label">成交额</div>
+            <div className="stat-value">{loading ? '--' : formatCurrency(totalAmount)}</div>
+            <div className="stat-label">成交金额</div>
           </div>
 
-          <div className="stat-card">
+          <div className="card stat-card">
             <div className="stat-icon success">
-              <PackageCheck className="h-6 w-6" />
+              <PackageCheck className="h-5 w-5" />
             </div>
-            <div className="stat-value">{loading ? '-' : report?.orderCount ?? 0}</div>
-            <div className="stat-label">完成订单数</div>
+            <div className="stat-value">{loading ? '--' : orderCount}</div>
+            <div className="stat-label">成交订单</div>
           </div>
 
-          <div className="stat-card">
+          <div className="card stat-card">
             <div className="stat-icon warning">
-              <Users className="h-6 w-6" />
+              <Users className="h-5 w-5" />
             </div>
-            <div className="stat-value">{loading ? '-' : report?.customerCount ?? 0}</div>
-            <div className="stat-label">覆盖客户数</div>
+            <div className="stat-value">{loading ? '--' : customerCount}</div>
+            <div className="stat-label">服务客户</div>
           </div>
 
-          <div className="stat-card">
+          <div className="card stat-card">
             <div className="stat-icon danger">
-              <TrendingUp className="h-6 w-6" />
+              <TrendingUp className="h-5 w-5" />
             </div>
-            <div className="stat-value">¥{loading ? '-' : formatCurrency(report?.avgPrice ?? 0)}</div>
+            <div className="stat-value">{loading ? '--' : formatCurrency(avgPrice)}</div>
             <div className="stat-label">平均客单价</div>
           </div>
-        </div>
+        </section>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <section className="card">
+        <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.2fr)_0.8fr]">
+          <div className="card overflow-hidden">
             <div className="card-header">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">业绩摘要</h2>
-                <p className="mt-1 text-sm text-gray-500">用最核心的几个口径概览当月业绩表现。</p>
+                <div className="section-kicker">业绩结构</div>
+                <h2 className="mt-1 text-base font-semibold text-gray-900">核心指标拆解</h2>
               </div>
             </div>
             <div className="card-body grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                <div className="text-sm text-gray-500">月度成交额</div>
-                <div className="mt-2 text-2xl font-bold text-gray-900">
-                  ¥{loading ? '-' : formatCurrency(report?.totalAmount ?? 0)}
+                <div className="text-sm text-gray-500">成交金额</div>
+                <div className="mt-2 text-xl font-semibold text-gray-900">
+                  {loading ? '--' : formatCurrency(totalAmount)}
                 </div>
+                <div className="mt-2 text-xs text-gray-500">反映当月实际完成订单规模。</div>
               </div>
               <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                <div className="text-sm text-gray-500">完成订单数</div>
-                <div className="mt-2 text-2xl font-bold text-gray-900">
-                  {loading ? '-' : report?.orderCount ?? 0}
-                </div>
+                <div className="text-sm text-gray-500">成交订单</div>
+                <div className="mt-2 text-xl font-semibold text-gray-900">{loading ? '--' : orderCount}</div>
+                <div className="mt-2 text-xs text-gray-500">用于判断跟进转化频率。</div>
               </div>
               <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                <div className="text-sm text-gray-500">覆盖客户数</div>
-                <div className="mt-2 text-2xl font-bold text-gray-900">
-                  {loading ? '-' : report?.customerCount ?? 0}
-                </div>
+                <div className="text-sm text-gray-500">客户数量</div>
+                <div className="mt-2 text-xl font-semibold text-gray-900">{loading ? '--' : customerCount}</div>
+                <div className="mt-2 text-xs text-gray-500">用于观察客户覆盖面。</div>
               </div>
               <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
-                <div className="text-sm text-gray-500">客户平均产出</div>
-                <div className="mt-2 text-2xl font-bold text-gray-900">
-                  ¥{loading ? '-' : formatCurrency(averagePerCustomer)}
+                <div className="text-sm text-gray-500">客户平均贡献</div>
+                <div className="mt-2 text-xl font-semibold text-gray-900">
+                  {loading ? '--' : formatCurrency(averagePerCustomer)}
                 </div>
+                <div className="mt-2 text-xs text-gray-500">成交金额除以客户数量。</div>
               </div>
             </div>
-          </section>
+          </div>
 
-          <section className="card">
+          <div className="card overflow-hidden">
             <div className="card-header">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">业绩解读</h2>
-                <p className="mt-1 text-sm text-gray-500">根据当前月份数据给出简单的观察提示。</p>
+                <div className="section-kicker">分析提示</div>
+                <h2 className="mt-1 text-base font-semibold text-gray-900">下一步关注点</h2>
               </div>
             </div>
-            <div className="card-body space-y-4">
-              <div className="rounded-2xl bg-blue-50 p-4">
+            <div className="card-body space-y-3">
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-blue-800">
                   <Target className="h-4 w-4" />
-                  订单推进
+                  订单节奏
                 </div>
-                <div className="mt-2 text-sm text-blue-700">
+                <div className="mt-2 text-sm leading-6 text-blue-700">
                   {loading
-                    ? '加载中...'
-                    : (report?.orderCount ?? 0) > 0
-                      ? `本月已完成 ${report?.orderCount ?? 0} 单，建议继续跟进高潜项目，把已审批申请尽快转成订单。`
-                      : '本月还没有完成订单，建议优先跟进已审批申请并推动成交。'}
+                    ? '正在加载数据...'
+                    : orderCount > 0
+                      ? `本月已完成 ${orderCount} 单，可继续关注未完成订单和待审批申请。`
+                      : '本月暂无成交订单，建议优先跟进待审批申请和报价项目。'}
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-emerald-50 p-4">
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-emerald-800">
                   <Users className="h-4 w-4" />
                   客户覆盖
                 </div>
-                <div className="mt-2 text-sm text-emerald-700">
+                <div className="mt-2 text-sm leading-6 text-emerald-700">
                   {loading
-                    ? '加载中...'
-                    : (report?.customerCount ?? 0) > 1
-                      ? `本月已覆盖 ${report?.customerCount ?? 0} 个客户，客户来源相对分散。`
-                      : '客户覆盖较少，建议扩大跟进范围，降低对单一客户的依赖。'}
+                    ? '正在加载数据...'
+                    : customerCount > 1
+                      ? `当前覆盖 ${customerCount} 个客户，可结合项目类型判断客户结构是否健康。`
+                      : '客户数量偏少时，报表波动会更明显，建议增加有效客户覆盖。'}
                 </div>
               </div>
 
-              <div className="rounded-2xl bg-amber-50 p-4">
+              <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
                 <div className="flex items-center gap-2 text-sm font-medium text-amber-800">
                   <TrendingUp className="h-4 w-4" />
-                  客单价表现
+                  客单价
                 </div>
-                <div className="mt-2 text-sm text-amber-700">
+                <div className="mt-2 text-sm leading-6 text-amber-700">
                   {loading
-                    ? '加载中...'
-                    : `当前平均客单价为 ¥${formatCurrency(report?.avgPrice ?? 0)}，可以结合产品结构继续优化大单占比。`}
+                    ? '正在加载数据...'
+                    : `平均客单价为 ${formatCurrency(avgPrice)}，可结合利润和产品结构判断质量。`}
                 </div>
               </div>
             </div>
-          </section>
-        </div>
+          </div>
+        </section>
       </div>
     </Layout>
   );

@@ -125,7 +125,7 @@ export default function OrderForm() {
                 <div className="inline-flex rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">
                   订单创建
                 </div>
-                <h1 className="mt-3 text-3xl font-bold text-gray-900">从申请生成订单</h1>
+                <h1 className="page-title mt-3">从申请生成订单</h1>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
                   只允许从已审批申请创建订单。订单创建后会进入确认状态，并触发库存扣减。
                 </p>
